@@ -22,6 +22,7 @@ after_validation :reverse_geocode
 	end
 
 	def Property.mls_init(params)
+		#give param array to select fields later on
 		browser = Property.browser_init()
 		site = 'https://www.mls.com' #mls site placeholder
 		username = 'example@mail.com'
@@ -35,7 +36,7 @@ after_validation :reverse_geocode
 	end
 
 	def Property.select_params(browser, params)
-		#
+		#select different property parameters, defined by parameter array
 		browser.select_list(:id, "PropertyType").select_value(params[0])
 		browser.select_list(:id, "City").select_value(params[1])
 		browser.text_field(:id, "SqFtRange").set params[2]
@@ -45,20 +46,24 @@ after_validation :reverse_geocode
 	def Property.mls_scrape(browser, params)
 		site = 'https://www.mls.com/search' #another placeholder site
 		Property.select_params(browser, params)
+		#download the data
 		browser.link(id: 'Search').click
 		browser.link(id: 'Download').click
+		#import the csv
 		Property.import_csv("#{Dir.pwd}/downloads/mls_info.csv")
 		browser.close
 	end
 
 
 	def Property.import_csv(filename)
+		#read them in as properties, create properties
 		CSV.foreach(filename, :headers => true) do |row|
 	  	Property.create!(row.to_hash)
 		end
 	end
 
 	def Property.inArea(address, distance, range)
+		#find properties based on distance, sqft, and year built
 		date = DateTime.now.beginning_of_day.yesterday
 		@properties = Property.where("sqft > ? AND sqft < ? AND cma=? AND created_at>? AND  year>? AND year<?", address.sqft-range, address.sqft+range, false, date, address.year-10, address.year+30)
 		@properties = @properties.near([address.lat, address.lng], distance)
@@ -81,7 +86,8 @@ after_validation :reverse_geocode
 	end
 	
   def Property.findAllProps(props)
-  	urls = Array.new
+  	#find comparables, create the url, write to sheet.
+  	urls = []]
   	props.each do |f|
   		comps = Property.inArea(f, 0.3, 250)
   		url = Property.makeURL(comps, f)
@@ -92,6 +98,7 @@ after_validation :reverse_geocode
 
 
 	def Property.writeToCsv(urls)
+		#write CMAs to file based on date
 		date = DateTime.now
 		day = date.day
 		month = date.month
