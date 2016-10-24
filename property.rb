@@ -48,6 +48,7 @@ after_validation :reverse_geocode
 		browser.link(id: 'Search').click
 		browser.link(id: 'Download').click
 		Property.import_csv("#{Dir.pwd}/downloads/mls_info.csv")
+		browser.close
 	end
 
 
